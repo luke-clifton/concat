@@ -79,7 +79,11 @@ main = sequence_
   -- , runSynCirc "magSqr"    $ ccc $ magSqr @Double
   -- , runSynCirc "cosSin-xy" $ ccc $ cosSinProd @R
   -- , runSynCirc "xp3y"      $ ccc $ \ (x,y) -> x + 3 * y :: R
-  , runSynCirc "horner"    $ ccc $ horner @Double [1,3,5]
+  , runSynCirc "horner"    $ ccc $ horner @Double [1,3]
+  , runSynCirc "test1"     $ ccc $ test1 @Double [1,3]
+  , runSynCirc "test2"     $ ccc $ test2 @Double [1,3]
+  , runSynCirc "test1a"    $ ccc $ test1a @Double [1,3]
+  , runSynCirc "test2a"    $ ccc $ test2a @Double [1,3]
 
   -- -- GLSL/WebGL code for GPU-accelerated graphics
   -- , runCircGlsl "wobbly-disk" $ ccc $
@@ -156,8 +160,42 @@ cosSinProd :: Floating a => a :* a -> a :* a
 cosSinProd (x,y) = cosSin (x * y)
 
 horner :: Num a => [a] -> a -> a
-horner []     _ = 0
+horner []     _ = 5
 horner (c:cs) a = c + a * horner cs a
+
+-- The if statement could select the 20
+-- or the 30 up front, instead of calculating both and selecting the result
+-- at the end. Depends on if you are optimising for silicon area or for
+-- propogation delay.
+test1 :: Num a => [a] -> Bool -> a -> a
+test1 []     b _ = 0
+test1 (c:cs) b a =
+    let m = if b then 20 else 30
+    in c + m * a * test1 cs b a
+
+-- Same thing as test1, but does have the if at the front selecting between
+-- 20 and 30. Uses half the nodes.
+test2 :: Num a => [a] -> Bool -> a -> a
+test2 cs b a = go cs (if b then 20 else 30) a
+    where
+        go [] _ _ = 0
+        go (c:cs) m a = c + m * a * go cs m a
+
+test1a :: Num a => [a] -> (Bool,a) -> a
+test1a []     _ = 0
+test1a (c:cs) (b,a) =
+    let m = if b then 20 else 30
+    in c + m * a * test1a cs (b,a)
+
+-- Same thing as test1, but does have the if at the front selecting between
+-- 20 and 30. Uses half the nodes.
+test2a :: Num a => [a] -> (Bool, a) -> a
+test2a cs (b,a) = go cs ((if b then 20 else 30), a)
+    where
+        go [] _  = 0
+        go (c:cs) (m, a) = c + m * a * go cs (m,a)
+
+
 
 -- Non-inlining versions:
 
